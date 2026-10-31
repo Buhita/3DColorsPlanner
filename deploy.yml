@@ -29,7 +29,7 @@ jobs:
       - uses: actions/configure-pages@v5
 
       - name: Publicar Blazor WebAssembly
-        run: dotnet publish 3DColorsPlanner/3DColorsPlanner.csproj -c Release -o publish
+        run: dotnet publish 3DColorsPlanner.csproj -c Release -o publish
 
       - uses: actions/upload-pages-artifact@v3
         with:
