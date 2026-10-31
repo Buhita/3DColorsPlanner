@@ -1,0 +1,42 @@
+[
+  {
+    "Name": "Blanco",
+    "Hex": "#FFFFFF"
+  },
+  {
+    "Name": "Negro",
+    "Hex": "#000000"
+  },
+  {
+    "Name": "Rojo",
+    "Hex": "#FF0000"
+  },
+  {
+    "Name": "Amarillo",
+    "Hex": "#F9F21A"
+  },
+  {
+    "Name": "Verde",
+    "Hex": "#00A651"
+  },
+  {
+    "Name": "Azul",
+    "Hex": "#01139D"
+  },
+  {
+    "Name": "Morado",
+    "Hex": "#8D3BFF"
+  },
+  {
+    "Name": "Rosa",
+    "Hex": "#F894FF"
+  },
+  {
+    "Name": "Gris",
+    "Hex": "#B8B8B8"
+  },
+  {
+    "Name": "Cian",
+    "Hex": "#00D9FF"
+  }
+]

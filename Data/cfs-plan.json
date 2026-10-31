@@ -1,0 +1,217 @@
+{
+  "Id": "6958d731-1693-46a5-b035-bba10b06328a",
+  "Name": "Plan de colores SparkX I7",
+  "UpdatedAt": "2026-10-31T17:03:35.6560443Z",
+  "Steps": [
+    {
+      "Id": "786522d5-3df9-4c21-90f5-03c754060984",
+      "Name": "Cambio 6",
+      "CurrentPrintReference": "Capsule\u002BLogo.3mf",
+      "NextPrintReference": "No\u002BAMS.3mf",
+      "Notes": "Continuaci\u00F3n desde el \u00FAltimo estado final.",
+      "CurrentColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#000000",
+        "#94DFFF"
+      ],
+      "CurrentMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "ChangedSlotIndex": 2,
+      "ReplacementColor": "#000000",
+      "ReplacementMaterialName": "",
+      "FinalColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#000000",
+        "#94DFFF"
+      ],
+      "FinalMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "CreatedAt": "2026-10-31T15:59:43.843369Z"
+    },
+    {
+      "Id": "e4093931-3d5f-440a-b72b-494ccf82a886",
+      "Name": "Cambio 5",
+      "CurrentPrintReference": "",
+      "NextPrintReference": "Capsule\u002BLogo.3mf",
+      "Notes": "Continuaci\u00F3n desde el \u00FAltimo estado final. ",
+      "CurrentColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#000000",
+        "#94DFFF"
+      ],
+      "CurrentMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "ChangedSlotIndex": 2,
+      "ReplacementColor": "#000000",
+      "ReplacementMaterialName": "",
+      "FinalColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#000000",
+        "#94DFFF"
+      ],
+      "FinalMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "CreatedAt": "2026-10-31T15:59:32.5374538Z"
+    },
+    {
+      "Id": "ac692cd7-5ddf-4539-a236-04675fdbac05",
+      "Name": "Cambio 4",
+      "CurrentPrintReference": "Rainy_Sakura_Bookmark_Surface_Top.3mf",
+      "NextPrintReference": "",
+      "Notes": "Continuaci\u00F3n desde el \u00FAltimo estado final. ",
+      "CurrentColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#482A0F",
+        "#94DFFF"
+      ],
+      "CurrentMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "ChangedSlotIndex": 2,
+      "ReplacementColor": "#000000",
+      "ReplacementMaterialName": "",
+      "FinalColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#000000",
+        "#94DFFF"
+      ],
+      "FinalMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "CreatedAt": "2026-10-31T15:58:40.7716574Z"
+    },
+    {
+      "Id": "c24ff92a-b3c2-40e8-9653-92daeacd8642",
+      "Name": "Cambio 3",
+      "CurrentPrintReference": "0.4NOZZLE_AMS_4COLORS_Magenta\u002BSkullture.3mf",
+      "NextPrintReference": "Rainy_Sakura_Bookmark_Surface_Top.3mf",
+      "Notes": "Continuaci\u00F3n desde el \u00FAltimo estado final.",
+      "CurrentColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#000000",
+        "#FF94F1"
+      ],
+      "CurrentMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "ChangedSlotIndex": 2,
+      "ReplacementColor": "#482A0F",
+      "ReplacementMaterialName": "",
+      "FinalColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#482A0F",
+        "#FF94F1"
+      ],
+      "FinalMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "CreatedAt": "2026-10-31T15:52:22.1043892Z"
+    },
+    {
+      "Id": "24c878c4-6b3a-44a6-92fc-3d996b6fdc2d",
+      "Name": "Cambio 2",
+      "CurrentPrintReference": "Nezuko\u002BFramed\u002BCutout\u002B04Nozzle_50x160.3mf",
+      "NextPrintReference": "0.4NOZZLE_AMS_4COLORS_Magenta\u002BSkullture.3mf",
+      "Notes": "Continuaci\u00F3n desde el \u00FAltimo estado final. ",
+      "CurrentColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#000000",
+        "#FF94F1"
+      ],
+      "CurrentMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "ChangedSlotIndex": 1,
+      "ReplacementColor": "#FFFFFF",
+      "ReplacementMaterialName": "",
+      "FinalColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#000000",
+        "#FF94F1"
+      ],
+      "FinalMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "CreatedAt": "2026-10-31T15:50:24.7330164Z"
+    },
+    {
+      "Id": "18580817-b543-4471-8f92-8c5522932f28",
+      "Name": "Cambio de color",
+      "CurrentPrintReference": "Llavero\u002BExpedition33.3mf",
+      "NextPrintReference": "Nezuko\u002BFramed\u002BCutout\u002B04Nozzle_50x160.3mf",
+      "Notes": "",
+      "CurrentColors": [
+        "#1B00A3",
+        "#FCFF33",
+        "#000000",
+        "#FF94F1"
+      ],
+      "CurrentMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "ChangedSlotIndex": 1,
+      "ReplacementColor": "#FFFFFF",
+      "ReplacementMaterialName": "",
+      "FinalColors": [
+        "#1B00A3",
+        "#FFFFFF",
+        "#000000",
+        "#FF94F1"
+      ],
+      "FinalMaterialNames": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "CreatedAt": "2026-10-31T15:40:18.4895548Z"
+    }
+  ]
+}

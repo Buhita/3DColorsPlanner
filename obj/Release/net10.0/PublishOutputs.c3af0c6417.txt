@@ -1,0 +1,8 @@
+C:\Mis Archivos\Programación\3DColors\3DColorsPlanner\bin\Release\net10.0\publish\appsettings.Development.json
+C:\Mis Archivos\Programación\3DColors\3DColorsPlanner\bin\Release\net10.0\publish\appsettings.json
+C:\Mis Archivos\Programación\3DColors\3DColorsPlanner\bin\Release\net10.0\publish\Data\cfs-plan.json
+C:\Mis Archivos\Programación\3DColors\3DColorsPlanner\bin\Release\net10.0\publish\Data\favorite-colors.json
+C:\Mis Archivos\Programación\3DColors\3DColorsPlanner\bin\Release\net10.0\publish\Data\Plans\6958d731169346a5b035bba10b06328a.json
+C:\Mis Archivos\Programación\3DColors\3DColorsPlanner\bin\Release\net10.0\publish\3DColorsPlanner.runtimeconfig.json
+C:\Mis Archivos\Programación\3DColors\3DColorsPlanner\bin\Release\net10.0\publish\dotnet.js
+C:\Mis Archivos\Programación\3DColors\3DColorsPlanner\bin\Release\net10.0\publish\web.config

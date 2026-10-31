@@ -1,0 +1,103 @@
+@page "/print"
+@using _3DColorsPlanner.Models
+@using _3DColorsPlanner.Services
+@inject PlanStorageService PlanStorage
+@inject IJSRuntime JS
+
+<PageTitle>Imprimir plan · 3DColors Planner</PageTitle>
+
+@if (plan is null)
+{
+    <p class="empty-state">Cargando el plan…</p>
+}
+else
+{
+    <main class="print-document">
+        <div class="print-actions">
+            <a class="btn btn-outline-secondary" href="./">Volver al planificador</a>
+            <button type="button" class="btn btn-primary" @onclick="PrintPage">Imprimir / Guardar como PDF</button>
+        </div>
+
+        <header class="print-header">
+            <p class="eyebrow">SparkX I7 · CFS</p>
+            <h1>@plan.Name</h1>
+            <p>@plan.Steps.Count pasos · Actualizado @plan.UpdatedAt.ToLocalTime().ToString("g")</p>
+        </header>
+
+        @if (plan.Steps.Count == 0)
+        {
+            <p class="empty-state">Este plan todavía no tiene pasos.</p>
+        }
+        else
+        {
+            @for (var index = 0; index < plan.Steps.Count; index++)
+            {
+                var step = plan.Steps[index];
+                <article class="print-step">
+                    <header class="print-step-header">
+                        <span class="print-step-number">@(index + 1)</span>
+                        <div>
+                            <h2>@step.Name</h2>
+                            <p>Slot @(step.ChangedSlotIndex + 1): @step.CurrentColors[step.ChangedSlotIndex] → @step.ReplacementColor</p>
+                        </div>
+                    </header>
+
+                    <div class="print-before-after">
+                        <section>
+                            <h3>Estado actual</h3>
+                            <div class="print-slots">
+                                @for (var slotIndex = 0; slotIndex < step.CurrentColors.Count; slotIndex++)
+                                {
+                                    <div class="print-slot">
+                                        <span>Slot @(slotIndex + 1)</span>
+                                        <span class="print-swatch" style="background-color:@step.CurrentColors[slotIndex]"></span>
+                                        <strong>@step.CurrentColors[slotIndex]</strong>
+                                        <small>@(string.IsNullOrWhiteSpace(step.CurrentMaterialNames[slotIndex]) ? "Sin material" : step.CurrentMaterialNames[slotIndex])</small>
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                        <section>
+                            <h3>Estado después</h3>
+                            <div class="print-slots">
+                                @for (var slotIndex = 0; slotIndex < step.FinalColors.Count; slotIndex++)
+                                {
+                                    <div class="print-slot">
+                                        <span>Slot @(slotIndex + 1)</span>
+                                        <span class="print-swatch" style="background-color:@step.FinalColors[slotIndex]"></span>
+                                        <strong>@step.FinalColors[slotIndex]</strong>
+                                        <small>@(string.IsNullOrWhiteSpace(step.FinalMaterialNames[slotIndex]) ? "Sin material" : step.FinalMaterialNames[slotIndex])</small>
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                    </div>
+
+                    <ul class="print-metadata">
+                        <li><strong>Impresión actual:</strong> @(string.IsNullOrWhiteSpace(step.CurrentPrintReference) ? "Sin referencia" : step.CurrentPrintReference)</li>
+                        <li><strong>Impresión siguiente:</strong> @(string.IsNullOrWhiteSpace(step.NextPrintReference) ? "Sin referencia" : step.NextPrintReference)</li>
+                        <li><strong>Material nuevo:</strong> @(string.IsNullOrWhiteSpace(step.ReplacementMaterialName) ? "Sin especificar" : step.ReplacementMaterialName)</li>
+                        @if (!string.IsNullOrWhiteSpace(step.Notes))
+                        {
+                            <li><strong>Notas:</strong> @step.Notes</li>
+                        }
+                    </ul>
+                </article>
+            }
+        }
+    </main>
+}
+
+@code {
+    private CfsPlan? plan;
+
+    protected override async Task OnInitializedAsync()
+    {
+        plan = await PlanStorage.LoadActivePlanAsync();
+    }
+
+    private async Task PrintPage()
+    {
+        await JS.InvokeVoidAsync("planner.printPage");
+    }
+}

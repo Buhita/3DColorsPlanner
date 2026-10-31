@@ -1,0 +1,716 @@
+﻿@page "/"
+@using _3DColorsPlanner.Models
+@using _3DColorsPlanner.Services
+@inject PlanStorageService PlanStorage
+@inject IJSRuntime JS
+
+<PageTitle>3DColors Planner</PageTitle>
+
+<div class="planner-shell">
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">SparkX I7 · CFS</p>
+            <h1>Planificador de cambios de color</h1>
+        </div>
+
+        <div class="header-actions">
+            <label class="btn btn-outline-secondary file-picker-label import-picker" title="Importa un backup, plan anterior o archivo de favoritos">
+                <InputFile accept=".json,application/json" OnChange="ImportBackup" />
+                <span>Importar JSON</span>
+            </label>
+            <button type="button" class="btn btn-outline-secondary" @onclick="ExportBackup">Backup JSON</button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="ExportCsv">Exportar CSV</button>
+            <button type="button" class="btn btn-primary" @onclick="SaveCurrentPlan">Guardar</button>
+        </div>
+    </header>
+
+    <p class="backup-note">El backup JSON conserva el plan y los favoritos; el CSV está pensado para hojas de cálculo.</p>
+
+    <section class="plan-toolbar">
+        <div class="plan-select-field">
+            <label for="active-plan">Plan activo</label>
+            <select id="active-plan" value="@activePlanId" @onchange="OnPlanChanged">
+                @foreach (var savedPlan in savedPlans)
+                {
+                    <option value="@savedPlan.Id">@savedPlan.Name</option>
+                }
+            </select>
+        </div>
+        <div class="plan-create-field">
+            <label for="new-plan-name">Crear otro plan</label>
+            <div class="plan-create-row">
+                <input id="new-plan-name" type="text" @bind="newPlanName" placeholder="Ej. PLA multicolor" />
+                <button type="button" class="btn btn-primary" @onclick="CreatePlan">Nuevo plan</button>
+            </div>
+        </div>
+        <div class="plan-toolbar-actions">
+            <button type="button" class="btn btn-outline-secondary" disabled="@(savedPlans.Count <= 1)" @onclick="DeleteCurrentPlan">Eliminar plan</button>
+            <a class="btn btn-outline-secondary" href="print" target="_blank" rel="noopener">Imprimir / PDF</a>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div class="status-banner">@statusMessage</div>
+    }
+
+    <div class="layout-grid">
+        <section class="panel form-panel">
+            <h2>Nuevo paso de trabajo</h2>
+
+            <div class="field-grid">
+                <div class="field">
+                    <label>Nombre del paso</label>
+                    <input type="text" @bind="draft.Name" placeholder="Cambio de color 1" />
+                </div>
+
+                <div class="field">
+                    <label>Impresión actual</label>
+                    <div class="file-input-row">
+                        <input type="text" @bind="draft.CurrentPrintReference" placeholder="C:\\ruta\\archivo.gcode" />
+                        <label class="btn btn-outline-secondary file-picker-label">
+                            <InputFile accept=".gcode,.3mf,.stl,.obj,.amf,.txt" OnChange="OnCurrentFileSelected" />
+                            <span>Archivo</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Impresión siguiente</label>
+                    <div class="file-input-row">
+                        <input type="text" @bind="draft.NextPrintReference" placeholder="C:\\ruta\\pieza-siguiente.gcode" />
+                        <label class="btn btn-outline-secondary file-picker-label">
+                            <InputFile accept=".gcode,.3mf,.stl,.obj,.amf,.txt" OnChange="OnNextFileSelected" />
+                            <span>Archivo</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="field wide">
+                    <label>Notas</label>
+                    <textarea @bind="draft.Notes" rows="3" placeholder="Ej. Cambiar amarillo por rojo para la pieza de soporte." />
+                </div>
+            </div>
+
+            <div class="slots-panel">
+                <h3>Colores actuales del CFS</h3>
+                <div class="slot-grid">
+                    @for (var index = 0; index < draft.CurrentColors.Count; index++)
+                    {
+                        var localIndex = index;
+                        <div class="color-slot">
+                            <span>Slot @(localIndex + 1)</span>
+                            <input
+                                type="color"
+                                value="@draft.CurrentColors[localIndex]"
+                                @oninput="@(args => SetCurrentColor(localIndex, args.Value?.ToString() ?? "#D9D9D9"))" />
+                            <span class="hex">@draft.CurrentColors[localIndex].ToUpperInvariant()</span>
+                            <input class="material-name" type="text" value="@draft.CurrentMaterialNames[localIndex]" placeholder="Material (ej. PLA Silk)" aria-label="Material del slot @(localIndex + 1)" @oninput="@(args => SetCurrentMaterialName(localIndex, args.Value?.ToString() ?? string.Empty))" />
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="swap-panel">
+                <div class="field">
+                    <label>Slot a cambiar</label>
+                    <select value="@draft.ChangedSlotIndex" @onchange="OnSlotChanged">
+                        @for (var index = 0; index < draft.CurrentColors.Count; index++)
+                        {
+                            <option value="@index">Slot @(index + 1)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Color nuevo</label>
+                    <input type="color" value="@draft.ReplacementColor" @oninput="@(args => SetReplacementColor(args.Value?.ToString() ?? "#FF8C00"))" />
+                    <div class="hex-inline">@draft.ReplacementColor.ToUpperInvariant()</div>
+                </div>
+                <div class="field wide">
+                    <label>Nombre del material nuevo</label>
+                    <input type="text" value="@draft.ReplacementMaterialName" placeholder="Ej. PETG rojo" @oninput="@(args => SetReplacementMaterialName(args.Value?.ToString() ?? string.Empty))" />
+                </div>
+            </div>
+
+            <div class="favorite-panel">
+                <h3>Colores rápidos</h3>
+
+                <div class="favorite-editor">
+                    <input type="text" @bind="favoriteName" placeholder="Nombre" />
+                    <input type="color" @bind="favoriteHex" />
+                    <button type="button" class="btn btn-primary" @onclick="AddFavoriteColor">Añadir</button>
+                </div>
+
+                <div class="favorite-grid">
+                    @foreach (var favorite in favoriteColors)
+                    {
+                        <div class="favorite-card">
+                            <button
+                                type="button"
+                                class="favorite-color"
+                                style="background:@favorite.Hex;"
+                                title="@favorite.Name · @favorite.Hex"
+                                @onclick="() => ApplyFavoriteColor(favorite.Hex)">
+                                <span>@favorite.Name</span>
+                            </button>
+                            <button type="button" class="favorite-remove" @onclick="() => RemoveFavoriteColor(favorite)">×</button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="result-panel">
+                <h3>Resultado previsto</h3>
+                <div class="swatches">
+                    @foreach (var color in draft.FinalColors)
+                    {
+                        <div class="swatch" style="background:@color" title="@color"></div>
+                    }
+                </div>
+                <p class="summary">
+                    Cambio en slot @(draft.ChangedSlotIndex + 1): @draft.CurrentColors[draft.ChangedSlotIndex].ToUpperInvariant() → @draft.ReplacementColor.ToUpperInvariant()
+                </p>
+            </div>
+
+            <div class="button-row">
+                @if (plan.Steps.Count > 0)
+                {
+                    <button type="button" class="btn btn-secondary" @onclick="LoadLastFinalState">Usar último estado final</button>
+                }
+
+                @if (draft.Id == Guid.Empty)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="AddStep">Guardar paso</button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-primary" @onclick="UpdateExistingStep">Actualizar paso</button>
+                }
+
+                <button type="button" class="btn btn-secondary" @onclick="ResetDraft">Limpiar</button>
+            </div>
+        </section>
+
+        <section class="panel list-panel">
+            <h2>Secuencia del plan</h2>
+
+            @if (plan.Steps.Count == 0)
+            {
+                <p class="empty-state">Aún no hay cambios guardados.</p>
+            }
+            else
+            {
+                <p class="sequence-hint">Arrastra una tarjeta para cambiar el orden, o usa las flechas. El paso más reciente aparece primero.</p>
+                @foreach (var step in plan.Steps)
+                {
+                    <article class="step-card" draggable="true" @ondragstart="() => BeginStepDrag(step.Id)" @ondragover:preventDefault @ondrop="() => DropStep(step.Id)">
+                        <div class="step-header">
+                            <h3>@step.Name</h3>
+                            <div class="step-actions">
+                                <button type="button" class="btn-link reorder-button" title="Mover hacia arriba" aria-label="Mover @step.Name hacia arriba" @onclick="() => MoveStep(step, -1)">↑</button>
+                                <button type="button" class="btn-link reorder-button" title="Mover hacia abajo" aria-label="Mover @step.Name hacia abajo" @onclick="() => MoveStep(step, 1)">↓</button>
+                                <button type="button" class="btn-link" @onclick="() => EditStep(step)">Editar</button>
+                                <button type="button" class="btn-link danger" @onclick="() => RemoveStep(step)">Eliminar</button>
+                            </div>
+                        </div>
+
+                        <div class="before-after">
+                            <div class="mini-group">
+                                <span>Antes</span>
+                                <div class="swatches small">
+                                    @foreach (var color in step.CurrentColors)
+                                    {
+                                        <div class="swatch" style="background:@color" title="@color"></div>
+                                    }
+                                </div>
+                                <div class="swatch-labels">
+                                    @foreach (var materialName in step.CurrentMaterialNames)
+                                    {
+                                        <span>@(string.IsNullOrWhiteSpace(materialName) ? "Sin material" : materialName)</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="mini-group">
+                                <span>Después</span>
+                                <div class="swatches small">
+                                    @foreach (var color in step.FinalColors)
+                                    {
+                                        <div class="swatch" style="background:@color" title="@color"></div>
+                                    }
+                                </div>
+                                <div class="swatch-labels">
+                                    @foreach (var materialName in step.FinalMaterialNames)
+                                    {
+                                        <span>@(string.IsNullOrWhiteSpace(materialName) ? "Sin material" : materialName)</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <ul class="meta-list">
+                            <li><strong>Actual:</strong> @(!string.IsNullOrWhiteSpace(step.CurrentPrintReference) ? step.CurrentPrintReference : "Sin referencia")</li>
+                            <li><strong>Siguiente:</strong> @(!string.IsNullOrWhiteSpace(step.NextPrintReference) ? step.NextPrintReference : "Sin referencia")</li>
+                            <li><strong>Cambio:</strong> Slot @(step.ChangedSlotIndex + 1): @step.CurrentColors[step.ChangedSlotIndex].ToUpperInvariant() → @step.ReplacementColor.ToUpperInvariant()@(!string.IsNullOrWhiteSpace(step.ReplacementMaterialName) ? $" · {step.ReplacementMaterialName}" : string.Empty)</li>
+                            @if (!string.IsNullOrWhiteSpace(step.Notes))
+                            {
+                                <li><strong>Notas:</strong> @step.Notes</li>
+                            }
+                        </ul>
+                    </article>
+                }
+            }
+        </section>
+    </div>
+</div>
+
+@code {
+    private const long MaxBackupSize = 5 * 1024 * 1024;
+    private List<FavoriteColor> favoriteColors = new();
+    private string favoriteName = "Nuevo";
+    private string favoriteHex = "#FF8C00";
+
+    private CfsPlan plan = new();
+    private List<PlanSummary> savedPlans = new();
+    private Guid activePlanId;
+    private string newPlanName = string.Empty;
+    private Guid? draggedStepId;
+    private CfsPlanStep draft = CreateDraft();
+    private string statusMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        savedPlans = await PlanStorage.LoadPlansAsync();
+        plan = await PlanStorage.LoadActivePlanAsync();
+        activePlanId = plan.Id;
+        favoriteColors = await PlanStorage.LoadFavoriteColorsAsync();
+        draft = CreateDraft();
+    }
+
+    private async Task OnPlanChanged(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var selectedId) || selectedId == activePlanId)
+        {
+            return;
+        }
+
+        await PlanStorage.SetActivePlanAsync(selectedId);
+        plan = await PlanStorage.LoadPlanAsync(selectedId);
+        activePlanId = selectedId;
+        draft = CreateDraft();
+        statusMessage = $"Plan activo: {plan.Name}.";
+    }
+
+    private async Task CreatePlan()
+    {
+        if (string.IsNullOrWhiteSpace(newPlanName))
+        {
+            statusMessage = "Escribe un nombre para el nuevo plan.";
+            return;
+        }
+
+        plan = await PlanStorage.CreatePlanAsync(newPlanName);
+        activePlanId = plan.Id;
+        savedPlans = await PlanStorage.LoadPlansAsync();
+        newPlanName = string.Empty;
+        draft = CreateDraft();
+        statusMessage = $"Se creó el plan «{plan.Name}».";
+    }
+
+    private async Task DeleteCurrentPlan()
+    {
+        if (savedPlans.Count <= 1)
+        {
+            statusMessage = "Debe quedar al menos un plan guardado.";
+            return;
+        }
+
+        if (!await JS.InvokeAsync<bool>("planner.confirmDeletePlan", plan.Name))
+        {
+            return;
+        }
+
+        await PlanStorage.DeletePlanAsync(plan.Id);
+        savedPlans = await PlanStorage.LoadPlansAsync();
+        plan = await PlanStorage.LoadActivePlanAsync();
+        activePlanId = plan.Id;
+        draft = CreateDraft();
+        statusMessage = "Plan eliminado.";
+    }
+
+    private static CfsPlanStep CreateDraft()
+    {
+        return new CfsPlanStep
+        {
+            Id = Guid.Empty,
+            Name = "Cambio de color",
+            CurrentColors = new List<string> { "#B8B8B8", "#D9D9D9", "#C0C0C0", "#E0E0E0" },
+            CurrentMaterialNames = new List<string> { "", "", "", "" },
+            FinalColors = new List<string> { "#B8B8B8", "#D9D9D9", "#C0C0C0", "#E0E0E0" },
+            FinalMaterialNames = new List<string> { "", "", "", "" },
+            ReplacementColor = "#FF8C00",
+            ChangedSlotIndex = 0,
+        };
+    }
+
+    private void SetCurrentColor(int index, string value)
+    {
+        if (index < 0 || index >= draft.CurrentColors.Count)
+        {
+            return;
+        }
+
+        draft.CurrentColors[index] = value;
+        draft.RefreshFinalColors();
+    }
+
+    private void SetCurrentMaterialName(int index, string value)
+    {
+        if (index < 0 || index >= draft.CurrentMaterialNames.Count)
+        {
+            return;
+        }
+
+        draft.CurrentMaterialNames[index] = value;
+        draft.RefreshFinalMaterialNames();
+    }
+
+    private void SetReplacementMaterialName(string value)
+    {
+        draft.ReplacementMaterialName = value;
+        draft.RefreshFinalMaterialNames();
+    }
+
+    private void OnCurrentFileSelected(InputFileChangeEventArgs args)
+    {
+        if (args.File is not null)
+        {
+            draft.CurrentPrintReference = args.File.Name;
+            statusMessage = $"Archivo seleccionado para la impresión actual: {args.File.Name}";
+        }
+    }
+
+    private void OnNextFileSelected(InputFileChangeEventArgs args)
+    {
+        if (args.File is not null)
+        {
+            draft.NextPrintReference = args.File.Name;
+            statusMessage = $"Archivo seleccionado para la siguiente impresión: {args.File.Name}";
+        }
+    }
+
+    private void SetReplacementColor(string value)
+    {
+        draft.ReplacementColor = value;
+        draft.RefreshFinalColors();
+    }
+
+    private async Task AddFavoriteColor()
+    {
+        if (string.IsNullOrWhiteSpace(favoriteName))
+        {
+            favoriteName = "Nuevo";
+        }
+
+        var color = new FavoriteColor
+        {
+            Name = favoriteName.Trim(),
+            Hex = favoriteHex.Trim(),
+        };
+
+        if (favoriteColors.Any(item => string.Equals(item.Hex, color.Hex, StringComparison.OrdinalIgnoreCase)))
+        {
+            statusMessage = $"El color {color.Hex.ToUpperInvariant()} ya está en tus favoritos.";
+            return;
+        }
+
+        favoriteColors.Insert(0, color);
+        await PlanStorage.SaveFavoriteColorsAsync(favoriteColors);
+        favoriteName = "Nuevo";
+        favoriteHex = "#FF8C00";
+        statusMessage = $"Color guardado como favorito: {color.Name} ({color.Hex.ToUpperInvariant()}).";
+    }
+
+    private async Task RemoveFavoriteColor(FavoriteColor favorite)
+    {
+        favoriteColors.Remove(favorite);
+        await PlanStorage.SaveFavoriteColorsAsync(favoriteColors);
+        statusMessage = $"Color favorito eliminado: {favorite.Name}.";
+    }
+
+    private void ApplyFavoriteColor(string hex)
+    {
+        SetReplacementColor(hex);
+        statusMessage = $"Color rápido aplicado: {hex.ToUpperInvariant()}";
+    }
+
+    private void OnSlotChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var selectedIndex))
+        {
+            draft.ChangedSlotIndex = selectedIndex;
+            draft.RefreshFinalColors();
+            draft.RefreshFinalMaterialNames();
+        }
+    }
+
+    private async Task AddStep()
+    {
+        var step = new CfsPlanStep
+        {
+            Id = Guid.NewGuid(),
+            Name = string.IsNullOrWhiteSpace(draft.Name) ? $"Cambio {plan.Steps.Count + 1}" : draft.Name,
+            CurrentPrintReference = draft.CurrentPrintReference,
+            NextPrintReference = draft.NextPrintReference,
+            Notes = draft.Notes,
+            CurrentColors = draft.CurrentColors.ToList(),
+            CurrentMaterialNames = draft.CurrentMaterialNames.ToList(),
+            ChangedSlotIndex = draft.ChangedSlotIndex,
+            ReplacementColor = draft.ReplacementColor,
+            ReplacementMaterialName = draft.ReplacementMaterialName,
+            FinalColors = draft.FinalColors.ToList(),
+            FinalMaterialNames = draft.FinalMaterialNames.ToList(),
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        step.RefreshFinalColors();
+        step.RefreshFinalMaterialNames();
+        plan.Steps.Insert(0, step);
+        await PlanStorage.SaveAsync(plan);
+        draft = CreateDraft();
+        statusMessage = "Paso añadido correctamente.";
+    }
+
+    private async Task UpdateExistingStep()
+    {
+        if (draft.Id == Guid.Empty)
+        {
+            await AddStep();
+            return;
+        }
+
+        var existing = plan.Steps.FirstOrDefault(step => step.Id == draft.Id);
+        if (existing is null)
+        {
+            await AddStep();
+            return;
+        }
+
+        var index = plan.Steps.IndexOf(existing);
+        var updated = new CfsPlanStep
+        {
+            Id = existing.Id,
+            Name = string.IsNullOrWhiteSpace(draft.Name) ? existing.Name : draft.Name,
+            CurrentPrintReference = draft.CurrentPrintReference,
+            NextPrintReference = draft.NextPrintReference,
+            Notes = draft.Notes,
+            CurrentColors = draft.CurrentColors.ToList(),
+            CurrentMaterialNames = draft.CurrentMaterialNames.ToList(),
+            ChangedSlotIndex = draft.ChangedSlotIndex,
+            ReplacementColor = draft.ReplacementColor,
+            ReplacementMaterialName = draft.ReplacementMaterialName,
+            FinalColors = draft.FinalColors.ToList(),
+            FinalMaterialNames = draft.FinalMaterialNames.ToList(),
+            CreatedAt = existing.CreatedAt,
+        };
+
+        updated.RefreshFinalColors();
+        updated.RefreshFinalMaterialNames();
+        plan.Steps[index] = updated;
+        await PlanStorage.SaveAsync(plan);
+        draft = CreateDraft();
+        statusMessage = "Paso actualizado correctamente.";
+    }
+
+    private async Task RemoveStep(CfsPlanStep step)
+    {
+        plan.Steps.Remove(step);
+        await PlanStorage.SaveAsync(plan);
+        statusMessage = "Paso eliminado.";
+    }
+
+    private void EditStep(CfsPlanStep step)
+    {
+        draft = new CfsPlanStep
+        {
+            Id = step.Id,
+            Name = step.Name,
+            CurrentPrintReference = step.CurrentPrintReference,
+            NextPrintReference = step.NextPrintReference,
+            Notes = step.Notes,
+            CurrentColors = step.CurrentColors.ToList(),
+            CurrentMaterialNames = step.CurrentMaterialNames.ToList(),
+            ChangedSlotIndex = step.ChangedSlotIndex,
+            ReplacementColor = step.ReplacementColor,
+            ReplacementMaterialName = step.ReplacementMaterialName,
+            FinalColors = step.FinalColors.ToList(),
+            FinalMaterialNames = step.FinalMaterialNames.ToList(),
+            CreatedAt = step.CreatedAt,
+        };
+
+        draft.RefreshFinalColors();
+        draft.RefreshFinalMaterialNames();
+        statusMessage = "Paso cargado para editar.";
+    }
+
+    private async Task SaveCurrentPlan()
+    {
+        await PlanStorage.SaveAsync(plan);
+        statusMessage = "Plan guardado en este navegador.";
+    }
+
+    private void LoadLastFinalState()
+    {
+        if (plan.Steps.Count == 0)
+        {
+            statusMessage = "Necesitas guardar al menos un paso antes de reutilizar el estado final.";
+            return;
+        }
+
+        var lastStep = plan.Steps[0];
+        draft = new CfsPlanStep
+        {
+            Id = Guid.Empty,
+            Name = $"Cambio {plan.Steps.Count + 1}",
+            CurrentPrintReference = lastStep.NextPrintReference,
+            NextPrintReference = string.Empty,
+            Notes = $"Continuación desde el último estado final. {lastStep.Notes}",
+            CurrentColors = lastStep.FinalColors.ToList(),
+            CurrentMaterialNames = lastStep.FinalMaterialNames.ToList(),
+            ChangedSlotIndex = lastStep.ChangedSlotIndex,
+            ReplacementColor = lastStep.ReplacementColor,
+            ReplacementMaterialName = string.Empty,
+            FinalColors = lastStep.FinalColors.ToList(),
+            FinalMaterialNames = lastStep.FinalMaterialNames.ToList(),
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        draft.RefreshFinalColors();
+        draft.RefreshFinalMaterialNames();
+        statusMessage = "Se ha cargado el último estado final como base del nuevo cambio.";
+    }
+
+    private void BeginStepDrag(Guid stepId) => draggedStepId = stepId;
+
+    private async Task DropStep(Guid targetStepId)
+    {
+        if (draggedStepId is not Guid draggedId || draggedId == targetStepId)
+        {
+            draggedStepId = null;
+            return;
+        }
+
+        var sourceIndex = plan.Steps.FindIndex(step => step.Id == draggedId);
+        var targetIndex = plan.Steps.FindIndex(step => step.Id == targetStepId);
+        draggedStepId = null;
+        if (sourceIndex < 0 || targetIndex < 0)
+        {
+            return;
+        }
+
+        await MoveStep(plan.Steps[sourceIndex], targetIndex - sourceIndex);
+    }
+
+    private async Task MoveStep(CfsPlanStep step, int offset)
+    {
+        var sourceIndex = plan.Steps.IndexOf(step);
+        var targetIndex = sourceIndex + offset;
+        if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= plan.Steps.Count)
+        {
+            return;
+        }
+
+        plan.Steps.RemoveAt(sourceIndex);
+        plan.Steps.Insert(targetIndex, step);
+        await PlanStorage.SaveAsync(plan);
+        statusMessage = "Orden de la secuencia actualizado.";
+    }
+
+    private async Task ExportBackup()
+    {
+        var json = PlanStorage.CreateBackupJson(plan, favoriteColors);
+        var base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(json));
+        await JS.InvokeVoidAsync("planner.downloadFile", "3dcolors-backup.json", "application/json;charset=utf-8", base64);
+        statusMessage = "Copia de seguridad JSON descargada con el plan y los colores favoritos.";
+    }
+
+    private async Task ExportCsv()
+    {
+        var csv = "\uFEFF" + PlanStorage.CreateCsv(plan);
+        var base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(csv));
+        await JS.InvokeVoidAsync("planner.downloadFile", "3dcolors-plan.csv", "text/csv;charset=utf-8", base64);
+        statusMessage = "CSV descargado. Incluye los datos del paso y los colores de cada slot antes y después.";
+    }
+
+    private async Task ImportBackup(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (file.Size > MaxBackupSize)
+        {
+            statusMessage = "El archivo supera el límite de 5 MB.";
+            return;
+        }
+
+            if (!await JS.InvokeAsync<bool>("planner.confirmImport", file.Name))
+        {
+            statusMessage = "Importación cancelada; el plan actual no se ha modificado.";
+            return;
+        }
+
+        try
+        {
+            await using var fileStream = file.OpenReadStream(MaxBackupSize);
+            using var memoryStream = new MemoryStream();
+            await fileStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            var imported = await PlanStorage.ReadImportAsync(memoryStream);
+            if (imported.IsLegacyFavorites)
+            {
+                favoriteColors = PlanStorage.NormalizeFavoriteColors(imported.FavoriteColors);
+                await PlanStorage.SaveFavoriteColorsAsync(favoriteColors);
+                statusMessage = $"Se importaron {favoriteColors.Count} colores favoritos.";
+                return;
+            }
+
+            if (imported.Plan is null)
+            {
+                throw new InvalidDataException("El archivo no contiene un plan.");
+            }
+
+            imported.Plan.Id = plan.Id;
+            plan = imported.Plan;
+            draft = CreateDraft();
+            if (imported.FavoriteColors is not null)
+            {
+                favoriteColors = PlanStorage.NormalizeFavoriteColors(imported.FavoriteColors);
+                await PlanStorage.SaveFavoriteColorsAsync(favoriteColors);
+            }
+
+            await PlanStorage.SaveAsync(plan);
+            savedPlans = await PlanStorage.LoadPlansAsync();
+            statusMessage = imported.IsLegacyPlan
+                ? $"Plan importado ({plan.Steps.Count} pasos). Se conservaron los favoritos actuales."
+                : $"Backup importado: {plan.Steps.Count} pasos y {favoriteColors.Count} colores favoritos.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            statusMessage = "No se pudo importar: el archivo JSON está dañado o tiene un formato incorrecto.";
+        }
+        catch (InvalidDataException exception)
+        {
+            statusMessage = $"No se pudo importar: {exception.Message}";
+        }
+        catch (IOException)
+        {
+            statusMessage = "No se pudo leer el archivo seleccionado.";
+        }
+    }
+
+    private void ResetDraft()
+    {
+        draft = CreateDraft();
+        statusMessage = "Formulario reiniciado.";
+    }
+}
